@@ -36,18 +36,13 @@ class Bot(discord.Client):
                         + ", Не могу поменять твою роль, т.к. у меня не достаточно прав.",
                         delete_after=5,
                     )
-                await message.delete()
-
-    async def on_member_join(self, member):
-        if member == self.user:
-            return
-
-        channel = discord.utils.get(member.guild.channels, name="основной")
-        await channel.send(
-            str(member.mention)
-            + ", напиши !nick Твой-ник-в-игре (например: !nick VadVergasov_EU). После этого тебе выдадут роль участника.",
-            delete_after=300,
-        )
+            else:
+                await message.channel.send(
+                    str(message.author.mention)
+                    + ", напиши !nick Твой-ник-в-игре (например: !nick VadVergasov_EU). После этого тебе выдадут роль участника.",
+                    delete_after=300,
+                )
+            await message.delete()
 
 
 instance = Bot()
