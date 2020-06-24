@@ -46,7 +46,7 @@ class Bot(discord.Client):
         await channel.send(
             str(member.mention)
             + ", напиши !nick Твой-ник-в-игре (например: !nick VadVergasov_EU). После этого тебе выдадут роль участника.",
-            delete_after=60,
+            delete_after=300,
         )
 
 
