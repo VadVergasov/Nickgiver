@@ -1,6 +1,14 @@
 import discord
+import json
 
 import config
+
+import api
+
+API_INSTANCE = api.WgApiBlitz(config.WG_ID, "eu", "ru")
+
+CLAN_ID = API_INSTANCE.clans_list(config.CLAN_TAG)["data"][0]["clan_id"]
+AVAILABLE_NICKS = []
 
 
 class Bot(discord.Client):
@@ -9,10 +17,14 @@ class Bot(discord.Client):
             return
 
         if message.channel.name == "вход":
-            if message.content.startswith("!nick"):
-                nickname = str(message.content).split(" ")[-1]
+            if message.content[0].isdigit() and int(message.content) <= len(
+                AVAILABLE_NICKS
+            ):
+                nickname = str(AVAILABLE_NICKS[int(message.content) - 1])
                 await message.channel.send(
-                    str(message.author.mention) + ", твой ник " + str(nickname),
+                    str(message.author.mention)
+                    + ", твой ник "
+                    + str(AVAILABLE_NICKS[int(message.content) - 1]),
                     delete_after=5,
                 )
                 try:
@@ -37,16 +49,47 @@ class Bot(discord.Client):
                         delete_after=5,
                     )
             else:
+                text = ", напиши номер ника, который у тебя в игре:\n"
+
+                for number in range(1, len(AVAILABLE_NICKS) + 1):
+                    text += str(number) + " " + str(AVAILABLE_NICKS[number - 1]) + "\n"
+
                 await message.channel.send(
-                    str(message.author.mention)
-                    + ", напиши !nick Твой-ник-в-игре (например: !nick VadVergasov_EU). После этого тебе выдадут роль участника.",
-                    delete_after=30,
+                    str(message.author.mention) + text, delete_after=30,
                 )
             await message.delete()
 
     async def on_member_join(self, member):
+        global AVAILABLE_NICKS
+
         if member == self.user:
             return
+
+        members = API_INSTANCE.clans_accountinfo(
+            list(
+                API_INSTANCE.clans_info(str(CLAN_ID))["data"][str(CLAN_ID)][
+                    "members_ids"
+                ]
+            )
+        )["data"]
+
+        AVAILABLE_NICKS = []
+
+        for key in members.keys():
+            AVAILABLE_NICKS.append(members[key]["account_name"])
+
+        discord_nicks = []
+
+        for current in member.guild.members:
+            if current in (self.user, member):
+                continue
+            discord_nicks.append(str(current.display_name))
+
+        for nick in discord_nicks:
+            try:
+                AVAILABLE_NICKS.remove(str(nick))
+            except ValueError:
+                pass
 
         channel = discord.utils.get(member.guild.channels, name="вход")
 
@@ -61,10 +104,13 @@ class Bot(discord.Client):
                 delete_after=5,
             )
 
+        text = ", напиши номер ника, который у тебя в игре:\n"
+
+        for number in range(1, len(AVAILABLE_NICKS) + 1):
+            text += str(number) + " " + str(AVAILABLE_NICKS[number - 1]) + "\n"
+
         await channel.send(
-            str(member.mention)
-            + ", напиши !nick Твой-ник-в-игре (например: !nick VadVergasov_EU). После этого тебе выдадут роль участника.",
-            delete_after=30,
+            str(member.mention) + text, delete_after=30,
         )
 
 

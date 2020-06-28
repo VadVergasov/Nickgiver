@@ -1,1 +1,3 @@
 TOKEN = "{str}"
+WG_ID = "{str}"
+CLAN_TAG = "{str}"

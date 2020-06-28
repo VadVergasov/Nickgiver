@@ -2,3 +2,4 @@
 config.py
 __pycache__/
 discord-env/
+test.py
