@@ -29,6 +29,7 @@ class Bot(discord.Client):
                 )
                 try:
                     await message.author.edit(nick=nickname)
+                    AVAILABLE_NICKS.remove(nickname)
                 except discord.errors.Forbidden:
                     await message.channel.send(
                         str(message.author.mention)
@@ -52,7 +53,7 @@ class Bot(discord.Client):
                 text = ", напиши номер ника, который у тебя в игре:\n"
 
                 for number in range(1, len(AVAILABLE_NICKS) + 1):
-                    text += str(number) + " " + str(AVAILABLE_NICKS[number - 1]) + "\n"
+                    text += str(number) + ". " + str(AVAILABLE_NICKS[number - 1]) + "\n"
 
                 await message.channel.send(
                     str(message.author.mention) + text, delete_after=30,
@@ -91,6 +92,8 @@ class Bot(discord.Client):
             except ValueError:
                 pass
 
+        AVAILABLE_NICKS = sorted(AVAILABLE_NICKS)
+
         channel = discord.utils.get(member.guild.channels, name="вход")
 
         roles = member.roles
@@ -107,10 +110,10 @@ class Bot(discord.Client):
         text = ", напиши номер ника, который у тебя в игре:\n"
 
         for number in range(1, len(AVAILABLE_NICKS) + 1):
-            text += str(number) + " " + str(AVAILABLE_NICKS[number - 1]) + "\n"
+            text += str(number) + ". " + str(AVAILABLE_NICKS[number - 1]) + "\n"
 
         await channel.send(
-            str(member.mention) + text, delete_after=30,
+            str(member.mention) + text, delete_after=60,
         )
 
 
