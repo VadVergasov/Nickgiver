@@ -1,5 +1,7 @@
+"""
+Main file for bot.
+"""
 import discord
-import json
 
 import config
 
@@ -8,11 +10,19 @@ import api
 API_INSTANCE = api.WgApiBlitz(config.WG_ID, "eu", "ru")
 
 CLAN_ID = API_INSTANCE.clans_list(config.CLAN_TAG)["data"][0]["clan_id"]
-AVAILABLE_NICKS = []
+AVAILABLE_NICKS = {}
+ROLES_HIERARCHY = {"private": 1, "executive_officer": 2, "commander": 3}
 
 
 class Bot(discord.Client):
+    """
+    Bot class.
+    """
+
     async def on_message(self, message):
+        """
+        Do on message.
+        """
         if message.author == self.user:
             return
 
@@ -20,16 +30,13 @@ class Bot(discord.Client):
             if message.content[0].isdigit() and int(message.content) <= len(
                 AVAILABLE_NICKS
             ):
-                nickname = str(AVAILABLE_NICKS[int(message.content) - 1])
+                nickname = str(list(AVAILABLE_NICKS.keys())[int(message.content) - 1])
                 await message.channel.send(
-                    str(message.author.mention)
-                    + ", твой ник "
-                    + str(AVAILABLE_NICKS[int(message.content) - 1]),
+                    str(message.author.mention) + ", твой ник " + nickname,
                     delete_after=5,
                 )
                 try:
                     await message.author.edit(nick=nickname)
-                    AVAILABLE_NICKS.remove(nickname)
                 except discord.errors.Forbidden:
                     await message.channel.send(
                         str(message.author.mention)
@@ -37,7 +44,10 @@ class Bot(discord.Client):
                         delete_after=5,
                     )
                 roles = message.author.roles
-                roles.append(discord.utils.get(message.guild.roles, name="Участник"))
+                for i in range(ROLES_HIERARCHY[AVAILABLE_NICKS[nickname]]):
+                    roles.append(
+                        discord.utils.get(message.guild.roles, name=config.ROLES[i])
+                    )
                 roles.remove(
                     discord.utils.get(message.guild.roles, name="Новый участник")
                 )
@@ -49,11 +59,17 @@ class Bot(discord.Client):
                         + ", Не могу поменять твою роль, т.к. у меня не достаточно прав.",
                         delete_after=5,
                     )
+                del AVAILABLE_NICKS[nickname]
             else:
                 text = ", напиши номер ника, который у тебя в игре:\n"
 
                 for number in range(1, len(AVAILABLE_NICKS) + 1):
-                    text += str(number) + ". " + str(AVAILABLE_NICKS[number - 1]) + "\n"
+                    text += (
+                        str(number)
+                        + ". "
+                        + str(list(AVAILABLE_NICKS.keys())[number - 1])
+                        + "\n"
+                    )
 
                 await message.channel.send(
                     str(message.author.mention) + text, delete_after=30,
@@ -61,6 +77,9 @@ class Bot(discord.Client):
             await message.delete()
 
     async def on_member_join(self, member):
+        """
+        When someone joins.
+        """
         global AVAILABLE_NICKS
 
         if member == self.user:
@@ -74,10 +93,8 @@ class Bot(discord.Client):
             )
         )["data"]
 
-        AVAILABLE_NICKS = []
-
         for key in members.keys():
-            AVAILABLE_NICKS.append(members[key]["account_name"])
+            AVAILABLE_NICKS[members[key]["account_name"]] = members[key]["role"]
 
         discord_nicks = []
 
@@ -88,11 +105,11 @@ class Bot(discord.Client):
 
         for nick in discord_nicks:
             try:
-                AVAILABLE_NICKS.remove(str(nick))
-            except ValueError:
+                del AVAILABLE_NICKS[str(nick)]
+            except KeyError:
                 pass
 
-        AVAILABLE_NICKS = sorted(AVAILABLE_NICKS)
+        AVAILABLE_NICKS = dict(sorted(AVAILABLE_NICKS.items()))
 
         channel = discord.utils.get(member.guild.channels, name="вход")
 
@@ -110,7 +127,12 @@ class Bot(discord.Client):
         text = ", напиши номер ника, который у тебя в игре:\n"
 
         for number in range(1, len(AVAILABLE_NICKS) + 1):
-            text += str(number) + ". " + str(AVAILABLE_NICKS[number - 1]) + "\n"
+            text += (
+                str(number)
+                + ". "
+                + str(list(AVAILABLE_NICKS.keys())[number - 1])
+                + "\n"
+            )
 
         await channel.send(
             str(member.mention) + text, delete_after=60,
