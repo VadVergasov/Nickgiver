@@ -10,8 +10,30 @@ import api
 API_INSTANCE = api.WgApiBlitz(config.WG_ID, "eu", "ru")
 
 CLAN_ID = API_INSTANCE.clans_list(config.CLAN_TAG)["data"][0]["clan_id"]
-AVAILABLE_NICKS = {}
 ROLES_HIERARCHY = {"private": 1, "executive_officer": 2, "commander": 3}
+
+
+def get_available_nicks(member, bot_user):
+    available_nicks = {}
+
+    members = API_INSTANCE.clans_accountinfo(
+        list(API_INSTANCE.clans_info(str(CLAN_ID))["data"][str(CLAN_ID)]["members_ids"])
+    )["data"]
+    for key in members.keys():
+        available_nicks[members[key]["account_name"]] = members[key]["role"]
+    discord_nicks = []
+    for current in member.guild.members:
+        if current in (bot_user, member):
+            continue
+        discord_nicks.append(str(current.display_name))
+    for nick in discord_nicks:
+        try:
+            del available_nicks[str(nick)]
+        except KeyError:
+            pass
+    available_nicks = dict(sorted(available_nicks.items()))
+
+    return available_nicks
 
 
 class Bot(discord.Client):
@@ -26,11 +48,17 @@ class Bot(discord.Client):
         if message.author == self.user:
             return
 
-        if message.channel.name == "вход":
+        if message.channel.name == "вход" and (
+            message.author.roles.count(
+                discord.utils.get(message.guild.roles, name="Новый участник")
+            )
+            == 1
+        ):
             if message.content[0].isdigit() and int(message.content) <= len(
-                AVAILABLE_NICKS
+                get_available_nicks(message.author, self.user)
             ):
-                nickname = str(list(AVAILABLE_NICKS.keys())[int(message.content) - 1])
+                available_nicks = get_available_nicks(message.author, self.user)
+                nickname = str(list(available_nicks.keys())[int(message.content) - 1])
                 await message.channel.send(
                     str(message.author.mention) + ", твой ник " + nickname,
                     delete_after=5,
@@ -44,7 +72,7 @@ class Bot(discord.Client):
                         delete_after=5,
                     )
                 roles = message.author.roles
-                for i in range(ROLES_HIERARCHY[AVAILABLE_NICKS[nickname]]):
+                for i in range(ROLES_HIERARCHY[available_nicks[nickname]]):
                     roles.append(
                         discord.utils.get(message.guild.roles, name=config.ROLES[i])
                     )
@@ -59,15 +87,15 @@ class Bot(discord.Client):
                         + ", Не могу поменять твою роль, т.к. у меня не достаточно прав.",
                         delete_after=5,
                     )
-                del AVAILABLE_NICKS[nickname]
+                del available_nicks[nickname]
             else:
                 text = ", напиши номер ника, который у тебя в игре:\n"
 
-                for number in range(1, len(AVAILABLE_NICKS) + 1):
+                for number in range(1, len(available_nicks) + 1):
                     text += (
                         str(number)
                         + ". "
-                        + str(list(AVAILABLE_NICKS.keys())[number - 1])
+                        + str(list(available_nicks.keys())[number - 1])
                         + "\n"
                     )
 
@@ -80,38 +108,13 @@ class Bot(discord.Client):
         """
         When someone joins.
         """
-        global AVAILABLE_NICKS
 
         if member == self.user:
             return
 
-        members = API_INSTANCE.clans_accountinfo(
-            list(
-                API_INSTANCE.clans_info(str(CLAN_ID))["data"][str(CLAN_ID)][
-                    "members_ids"
-                ]
-            )
-        )["data"]
-
-        for key in members.keys():
-            AVAILABLE_NICKS[members[key]["account_name"]] = members[key]["role"]
-
-        discord_nicks = []
-
-        for current in member.guild.members:
-            if current in (self.user, member):
-                continue
-            discord_nicks.append(str(current.display_name))
-
-        for nick in discord_nicks:
-            try:
-                del AVAILABLE_NICKS[str(nick)]
-            except KeyError:
-                pass
-
-        AVAILABLE_NICKS = dict(sorted(AVAILABLE_NICKS.items()))
-
         channel = discord.utils.get(member.guild.channels, name="вход")
+
+        available_nicks = get_available_nicks(member, self.user)
 
         roles = member.roles
         roles.append(discord.utils.get(member.guild.roles, name="Новый участник"))
@@ -126,11 +129,11 @@ class Bot(discord.Client):
 
         text = ", напиши номер ника, который у тебя в игре:\n"
 
-        for number in range(1, len(AVAILABLE_NICKS) + 1):
+        for number in range(1, len(available_nicks) + 1):
             text += (
                 str(number)
                 + ". "
-                + str(list(AVAILABLE_NICKS.keys())[number - 1])
+                + str(list(available_nicks.keys())[number - 1])
                 + "\n"
             )
 
