@@ -50,7 +50,7 @@ class Bot(discord.Client):
 
         if message.channel.name == "вход" and (
             message.author.roles.count(
-                discord.utils.get(message.guild.roles, name="Новый участник")
+                discord.utils.get(message.guild.roles, name=config.ROLES[0])
             )
             == 1
         ):
@@ -74,10 +74,10 @@ class Bot(discord.Client):
                 roles = message.author.roles
                 for i in range(ROLES_HIERARCHY[available_nicks[nickname]]):
                     roles.append(
-                        discord.utils.get(message.guild.roles, name=config.ROLES[i])
+                        discord.utils.get(message.guild.roles, name=config.ROLES[1 + i])
                     )
                 roles.remove(
-                    discord.utils.get(message.guild.roles, name="Новый участник")
+                    discord.utils.get(message.guild.roles, name=config.ROLES[0])
                 )
                 try:
                     await message.author.edit(roles=roles)
@@ -117,7 +117,7 @@ class Bot(discord.Client):
         available_nicks = get_available_nicks(member, self.user)
 
         roles = member.roles
-        roles.append(discord.utils.get(member.guild.roles, name="Новый участник"))
+        roles.append(discord.utils.get(member.guild.roles, name=config.ROLES[0]))
         try:
             await member.edit(roles=roles)
         except discord.errors.Forbidden:
