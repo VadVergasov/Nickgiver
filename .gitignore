@@ -1,5 +1,5 @@
 .vscode/
 config.py
 __pycache__/
-discord-env/
+bot-env/
 test.py
