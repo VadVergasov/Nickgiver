@@ -54,7 +54,7 @@ class Bot(discord.Client):
             )
             == 1
         ):
-            if message.content[0].isdigit() and int(message.content) <= len(
+            if str(message.content).isdigit() and int(message.content) <= len(
                 get_available_nicks(message.author, self.user)
             ):
                 available_nicks = get_available_nicks(message.author, self.user)
@@ -105,6 +105,50 @@ class Bot(discord.Client):
                     str(message.author.mention) + text, delete_after=30,
                 )
             await message.delete()
+
+        if message.channel.name == "основной":
+            if str(message.content) == "!nick":
+                try:
+                    await message.author.edit(nick=None)
+                except discord.errors.Forbidden:
+                    await message.channel.send(
+                        str(message.author.mention)
+                        + ", не могу поменять твой ник, т.к. у меня не достаточно прав.",
+                        delete_after=5,
+                    )
+                available_nicks = get_available_nicks(message.author, self.user)
+
+                text = ", напиши номер ника, который у тебя в игре:\n"
+
+                for number in range(1, len(available_nicks) + 1):
+                    text += (
+                        str(number)
+                        + ". "
+                        + str(list(available_nicks.keys())[number - 1])
+                        + "\n"
+                    )
+
+                await message.channel.send(
+                    str(message.author.mention) + text, delete_after=30,
+                )
+                await message.delete()
+            elif str(message.content).isdigit():
+                available_nicks = get_available_nicks(message.author, self.user)
+                nickname = str(list(available_nicks.keys())[int(message.content) - 1])
+                await message.channel.send(
+                    str(message.author.mention) + ", твой новый ник " + nickname,
+                    delete_after=5,
+                )
+                try:
+                    await message.author.edit(nick=nickname)
+                except discord.errors.Forbidden:
+                    await message.channel.send(
+                        str(message.author.mention)
+                        + ", не могу поменять твой ник, т.к. у меня не достаточно прав.",
+                        delete_after=5,
+                    )
+                del available_nicks[nickname]
+                await message.delete()
 
     async def on_member_join(self, member):
         """
