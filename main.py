@@ -89,6 +89,8 @@ class Bot(discord.Client):
                     )
                 del available_nicks[nickname]
             else:
+                available_nicks = get_available_nicks(message.author, self.user)
+
                 text = ", напиши номер ника, который у тебя в игре:\n"
 
                 for number in range(1, len(available_nicks) + 1):
