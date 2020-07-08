@@ -11,6 +11,7 @@ API_INSTANCE = api.WgApiBlitz(config.WG_ID, "eu", "ru")
 
 CLAN_ID = API_INSTANCE.clans_list(config.CLAN_TAG)["data"][0]["clan_id"]
 ROLES_HIERARCHY = {"private": 1, "executive_officer": 2, "commander": 3}
+CHANGING_NICK = set()
 
 
 def get_available_nicks(member, bot_user):
@@ -106,33 +107,37 @@ class Bot(discord.Client):
                 )
             await message.delete()
 
+        global CHANGING_NICK
         if message.channel.name == "основной":
             if str(message.content) == "!nick":
                 try:
                     await message.author.edit(nick=None)
+                    available_nicks = get_available_nicks(message.author, self.user)
+
+                    text = ", напиши номер ника, который у тебя в игре:\n"
+
+                    for number in range(1, len(available_nicks) + 1):
+                        text += (
+                            str(number)
+                            + ". "
+                            + str(list(available_nicks.keys())[number - 1])
+                            + "\n"
+                        )
+
+                    await message.channel.send(
+                        str(message.author.mention) + text, delete_after=30,
+                    )
+
+                    CHANGING_NICK.add(message.author.id)
                 except discord.errors.Forbidden:
                     await message.channel.send(
                         str(message.author.mention)
                         + ", не могу поменять твой ник, т.к. у меня не достаточно прав.",
                         delete_after=5,
                     )
-                available_nicks = get_available_nicks(message.author, self.user)
-
-                text = ", напиши номер ника, который у тебя в игре:\n"
-
-                for number in range(1, len(available_nicks) + 1):
-                    text += (
-                        str(number)
-                        + ". "
-                        + str(list(available_nicks.keys())[number - 1])
-                        + "\n"
-                    )
-
-                await message.channel.send(
-                    str(message.author.mention) + text, delete_after=30,
-                )
-                await message.delete()
-            elif str(message.content).isdigit():
+                finally:
+                    await message.delete()
+            elif str(message.content).isdigit() and message.author.id in CHANGING_NICK:
                 available_nicks = get_available_nicks(message.author, self.user)
                 nickname = str(list(available_nicks.keys())[int(message.content) - 1])
                 await message.channel.send(
@@ -141,14 +146,16 @@ class Bot(discord.Client):
                 )
                 try:
                     await message.author.edit(nick=nickname)
+                    CHANGING_NICK.remove(message.author.id)
                 except discord.errors.Forbidden:
                     await message.channel.send(
                         str(message.author.mention)
                         + ", не могу поменять твой ник, т.к. у меня не достаточно прав.",
                         delete_after=5,
                     )
-                del available_nicks[nickname]
-                await message.delete()
+                finally:
+                    await message.delete()
+                    del available_nicks[nickname]
 
     async def on_member_join(self, member):
         """
